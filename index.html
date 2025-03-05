@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <link rel="icon" type="image/x-icon" href="Downpic.cc-image558545243.jpg">
+
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:opsz,wght@10..72,100..900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: url('https://upload.wikimedia.org/wikipedia/commons/7/75/IIT_Kanpur.jpg') no-repeat center center fixed;
+            background-size: cover;
+            font-family: Arial, sans-serif;
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 60px 0 0 0; /* Add padding to the top to prevent overlap */
+        }
+        .task-form {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            width: 50%;
+            margin: 20px auto;
+        }
+        .task-form input, .task-form select, .task-form button {
+            margin: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+        }
+        .container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        .column {
+            width: 30%;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .task {
+            background: rgba(255, 255, 255, 0.8);
+            color: black;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+        .task .tag {
+            border-radius: 10px;
+            padding: 5px 10px;
+            font-size: 12px;
+            color: white;
+            margin-left: 10px;
+            display: inline-block;
+        }
+        .completed {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+        .popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            color: black;
+        }
+        .difficulty-priority {
+            display: flex;
+            justify-content: space-between;
+            width: 150px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .difficulty {
+            flex: 1;
+            padding: 5px;
+            text-align: center;
+        }
+        .priority {
+            flex: 1;
+            padding: 5px;
+            text-align: center;
+        }
+        .easy { background-color: green; }
+        .medium { background-color: orange; }
+        .hard { background-color: red; }
+        .low { background-color: green; }
+        .medium-priority { background-color: orange; }
+        .high { background-color: red; }
+        .complete-button {
+            width: 30px;
+            height: 30px;
+            font-size: 12px;
+            border-radius: 50%;
+            border: none;
+            background-color: #28a745;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 5px;
+        }
+        .task-name {
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+        }
+        .big-shoulders {
+            font-family: 'Big Shoulders', sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 700;
+            font-style: normal;
+            font-size: 2em; /* Increase the font size */
+            background-color: rgba(0, 0, 0, 0.8); /* Solid background with some transparency */
+            padding: 10px;
+            border-radius: 10px;
+            margin: 0;
+            display: inline-block;
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 100%;
+            text-align: center;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="big-shoulders" id="dateTimeDisplay"></div>
+    <div class="task-form">
+        <h2>Add New Task</h2>
+        <input type="text" id="taskName" placeholder="Task Name" required>
+        <input type="date" id="dueDate">
+        <select id="difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+        </select>
+        <select id="priority">
+            <option value="low">Low Priority</option>
+            <option value="medium">Medium Priority</option>
+            <option value="high">High Priority</option>
+        </select>
+        <select id="category">
+            <option value="jee">JEE</option>
+            <option value="python_misc">Python & Misc</option>
+        </select>
+        <button onclick="addTask()">Add Task</button>
+    </div>
+    
+    <div class="container">
+        <div class="column" id="jee">
+            <h2>JEE Tasks</h2>
+        </div>
+        <div class="column" id="python_misc">
+            <h2>Python & Misc Tasks</h2>
+        </div>
+        <div class="column" id="completed">
+            <h2>Completed Tasks</h2>
+        </div>
+    </div>
+    
+    <div class="popup" id="editPopup">
+        <h3>Edit Task</h3>
+        <input type="date" id="editDueDate">
+        <select id="editDifficulty">
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+        </select>
+        <select id="editPriority">
+            <option value="low">Low Priority</option>
+            <option value="medium">Medium Priority</option>
+            <option value="high">High Priority</option>
+        </select>
+        <button onclick="saveEdit()">Save</button>
+        <button onclick="closePopup()">Cancel</button>
+    </div>
+    
+    <script>
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        const today = new Date();
+        const timeDiff = date.getTime() - today.getTime();
+        const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        const day = date.getDate();
+        const month = date.toLocaleString('default', { month: 'long' });
+        const year = date.getFullYear();
+        let dayWithSuffix = day;
+        if (day === 1 || day === 21 || day === 31) {
+            dayWithSuffix += 'st';
+        } else if (day === 2 || day === 22) {
+            dayWithSuffix += 'nd';
+        } else if (day === 3 || day === 23) {
+            dayWithSuffix += 'rd';
+        } else {
+            dayWithSuffix += 'th';
+        }
+        let formattedDate = `${dayWithSuffix} ${month} ${year}, ${daysRemaining} days remaining`;
+        if (daysRemaining < 5) {
+            formattedDate = `<span style="color: darkred;">${formattedDate}</span>`;
+        }
+        return formattedDate;
+    }
+
+    function updateDateTime() {
+        const now = new Date();
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        const seconds = now.getSeconds();
+        const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        const today = now.toLocaleDateString('default', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 0, 0);
+        const timeRemaining = endOfDay - now;
+        const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
+        const minutesRemaining = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+        const secondsRemaining = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+        const timeRemainingString = `${hoursRemaining.toString().padStart(2, '0')}h ${minutesRemaining.toString().padStart(2, '0')}m ${secondsRemaining.toString().padStart(2, '0')}s`;
+
+        document.getElementById('dateTimeDisplay').innerHTML = `${today} ${timeString}<br>Time remaining to 11 PM: ${timeRemainingString}`;
+    }
+
+    setInterval(updateDateTime, 1000);
+
+    const tasks = JSON.parse(localStorage.getItem('tasks')) || {
+        jee: [],
+        python_misc: [],
+        completed: []
+    };
+    
+    let currentEditTask = null;
+    let currentCategory = null;
+    function saveTasksToLocalStorage() {
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function renderTasks() {
+        for (const category in tasks) {
+            const column = document.getElementById(category);
+            column.innerHTML = `<h2>${category === 'completed' ? 'Completed Tasks' : category === 'jee' ? 'JEE Tasks' : 'Python & Misc Tasks'}</h2>`;
+            
+            // Sort tasks by days remaining
+            tasks[category].sort((a, b) => {
+                const aDaysRemaining = a.due ? Math.ceil((new Date(a.due) - new Date()) / (1000 * 3600 * 24)) : Infinity;
+                const bDaysRemaining = b.due ? Math.ceil((new Date(b.due) - new Date()) / (1000 * 3600 * 24)) : Infinity;
+                return aDaysRemaining - bDaysRemaining;
+            });
+
+            tasks[category].forEach(task => {
+                const taskElement = document.createElement("div");
+                taskElement.classList.add("task");
+                if (task.completed) taskElement.classList.add("completed");
+                const dueDateFormatted = task.due ? formatDate(task.due) : "No due date";
+                const difficultyClass = task.difficulty.toLowerCase();
+                const priorityClass = task.priority.replace(" ", "-").toLowerCase();
+                taskElement.innerHTML = `
+                    <div class="task-name">
+                        ${task.name} <span onclick='editTask("${category}", "${task.name}")'>(${dueDateFormatted})</span>
+                    </div>
+                    <div class="difficulty-priority">
+                        <div class="difficulty ${difficultyClass}">${task.difficulty}</div>
+                        <div class="priority ${priorityClass}">${task.priority}</div>
+                    </div>
+                    <button class="complete-button" onclick='markTaskAsCompleted("${category}", "${task.name}")'>✓</button>`;
+                column.appendChild(taskElement);
+            });
+        }
+    }
+
+    function addTask() {
+        const taskName = document.getElementById("taskName").value;
+        const dueDate = document.getElementById("dueDate").value;
+        const difficulty = document.getElementById("difficulty").value;
+        const priority = document.getElementById("priority").value;
+        const category = document.getElementById("category").value;
+
+        if (!taskName) {
+            alert("Task name is required");
+            return;
+        }
+
+        const newTask = {
+            name: taskName,
+            due: dueDate || null,
+            difficulty: difficulty,
+            priority: priority,
+            completed: false
+        };
+
+        tasks[category].push(newTask);
+        saveTasksToLocalStorage();
+        renderTasks();
+
+        // Clear the form
+        document.getElementById("taskName").value = "";
+        document.getElementById("dueDate").value = "";
+        document.getElementById("difficulty").value = "easy";
+        document.getElementById("priority").value = "low";
+        document.getElementById("category").value = "jee";
+    }
+
+    function editTask(category, taskName) {
+        currentCategory = category;
+        currentEditTask = tasks[category].find(task => task.name === taskName);
+        document.getElementById("editDueDate").value = currentEditTask.due || "";
+        document.getElementById("editDifficulty").value = currentEditTask.difficulty;
+        document.getElementById("editPriority").value = currentEditTask.priority;
+        document.getElementById("editPopup").style.display = "block";
+    }
+
+    function saveEdit() {
+        currentEditTask.due = document.getElementById("editDueDate").value || null;
+        currentEditTask.difficulty = document.getElementById("editDifficulty").value;
+        currentEditTask.priority = document.getElementById("editPriority").value;
+        closePopup();
+        saveTasksToLocalStorage();
+        renderTasks();
+    }
+
+    function closePopup() {
+        document.getElementById("editPopup").style.display = "none";
+    }
+
+    function markTaskAsCompleted(category, taskName) {
+        const task = tasks[category].find(task => task.name === taskName);
+        task.completed = true;
+        tasks.completed.push(task);
+        tasks[category] = tasks[category].filter(task => task.name !== taskName);
+        saveTasksToLocalStorage();
+        renderTasks();
+    }
+
+    renderTasks();
+</script>
+</body>
+</html>
