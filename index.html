@@ -5,11 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Manager</title>
     <link rel="icon" type="image/x-icon" href="Downpic.cc-image558545243.jpg">
-
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:opsz,wght@10..72,100..900&display=swap" rel="stylesheet">
+    
+    <!-- Loading compat libraries so we can use firebase.firestore() easily -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Initialize Firebase -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCFU1Vpqmz-7wg7AbGjfXJds_WiJtpZDyk",
+            authDomain: "study-180c7.firebaseapp.com",
+            projectId: "study-180c7",
+            storageBucket: "study-180c7.firebasestorage.app",
+            messagingSenderId: "236753296793",
+            appId: "1:236753296793:web:adcb65d417e110a806c708",
+            measurementId: "G-C52FTDNTSZ"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    </script>
+    
     <style>
         body {
             background: url('https://upload.wikimedia.org/wikipedia/commons/7/75/IIT_Kanpur.jpg') no-repeat center center fixed;
@@ -142,7 +162,6 @@
         }
     </style>
 </head>
-
 <body>
     <div class="big-shoulders" id="dateTimeDisplay"></div>
     <div class="task-form">
@@ -196,161 +215,144 @@
     </div>
     
     <script>
-    function formatDate(dateString) {
-        const date = new Date(dateString);
-        const today = new Date();
-        const timeDiff = date.getTime() - today.getTime();
-        const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
-        const day = date.getDate();
-        const month = date.toLocaleString('default', { month: 'long' });
-        const year = date.getFullYear();
-        let dayWithSuffix = day;
-        if (day === 1 || day === 21 || day === 31) {
-            dayWithSuffix += 'st';
-        } else if (day === 2 || day === 22) {
-            dayWithSuffix += 'nd';
-        } else if (day === 3 || day === 23) {
-            dayWithSuffix += 'rd';
-        } else {
-            dayWithSuffix += 'th';
+        function addTask() {
+            const taskName = document.getElementById("taskName").value;
+            const dueDate = document.getElementById("dueDate").value;
+            const difficulty = document.getElementById("difficulty").value;
+            const priority = document.getElementById("priority").value;
+            const category = document.getElementById("category").value;
+
+            if (!taskName) {
+                alert("Task name is required");
+                return;
+            }
+
+            const newTask = {
+                name: taskName,
+                due: dueDate || null,
+                difficulty: difficulty,
+                priority: priority,
+                completed: false,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            // Add to Firestore
+            db.collection(category).add(newTask)
+                .then(() => {
+                    console.log("Task added successfully!");
+                    // Clear the form
+                    document.getElementById("taskName").value = "";
+                    document.getElementById("dueDate").value = "";
+                    document.getElementById("difficulty").value = "easy";
+                    document.getElementById("priority").value = "low";
+                })
+                .catch((error) => {
+                    console.error("Error adding task: ", error);
+                    alert("Error adding task. Please try again.");
+                });
         }
-        let formattedDate = `${dayWithSuffix} ${month} ${year}, ${daysRemaining} days remaining`;
-        if (daysRemaining < 5) {
-            formattedDate = `<span style="color: darkred;">${formattedDate}</span>`;
+
+        function listenToCategory(category) {
+            db.collection(category)
+                .orderBy("timestamp", "desc")
+                .onSnapshot((snapshot) => {
+                    const column = document.getElementById(category);
+                    column.innerHTML = `<h2>${category === 'completed' ? 'Completed Tasks' : category === 'jee' ? 'JEE Tasks' : 'Python & Misc Tasks'}</h2>`;
+                    
+                    snapshot.forEach((doc) => {
+                        const task = doc.data();
+                        const taskElement = document.createElement("div");
+                        taskElement.classList.add("task");
+                        if (task.completed) taskElement.classList.add("completed");
+                        
+                        const dueDateFormatted = task.due ? formatDate(task.due) : "No due date";
+                        const difficultyClass = task.difficulty.toLowerCase();
+                        const priorityClass = task.priority.replace(" ", "-").toLowerCase();
+                        
+                        taskElement.innerHTML = `
+                            <div class="task-name">
+                                ${task.name} <span>(${dueDateFormatted})</span>
+                            </div>
+                            <div class="difficulty-priority">
+                                <div class="difficulty ${difficultyClass}">${task.difficulty}</div>
+                                <div class="priority ${priorityClass}">${task.priority}</div>
+                            </div>
+                            <button class="complete-button" onclick='markTaskAsCompleted("${category}", "${doc.id}")'>✓</button>`;
+                        column.appendChild(taskElement);
+                    });
+                });
         }
-        return formattedDate;
-    }
 
-    function updateDateTime() {
-        const now = new Date();
-        const hours = now.getHours();
-        const minutes = now.getMinutes();
-        const seconds = now.getSeconds();
-        const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-        const today = now.toLocaleDateString('default', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 0, 0);
-        const timeRemaining = endOfDay - now;
-        const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
-        const minutesRemaining = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-        const secondsRemaining = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-        const timeRemainingString = `${hoursRemaining.toString().padStart(2, '0')}h ${minutesRemaining.toString().padStart(2, '0')}m ${secondsRemaining.toString().padStart(2, '0')}s`;
-
-        document.getElementById('dateTimeDisplay').innerHTML = `${today} ${timeString}<br>Time remaining to 11 PM: ${timeRemainingString}`;
-    }
-
-    setInterval(updateDateTime, 1000);
-
-    const tasks = JSON.parse(localStorage.getItem('tasks')) || {
-        jee: [],
-        python_misc: [],
-        completed: []
-    };
-    
-    let currentEditTask = null;
-    let currentCategory = null;
-    function saveTasksToLocalStorage() {
-        localStorage.setItem('tasks', JSON.stringify(tasks));
-    }
-
-    function renderTasks() {
-        for (const category in tasks) {
-            const column = document.getElementById(category);
-            column.innerHTML = `<h2>${category === 'completed' ? 'Completed Tasks' : category === 'jee' ? 'JEE Tasks' : 'Python & Misc Tasks'}</h2>`;
+        function markTaskAsCompleted(category, taskId) {
+            const task = db.collection(category).doc(taskId);
             
-            // Sort tasks by days remaining
-            tasks[category].sort((a, b) => {
-                const aDaysRemaining = a.due ? Math.ceil((new Date(a.due) - new Date()) / (1000 * 3600 * 24)) : Infinity;
-                const bDaysRemaining = b.due ? Math.ceil((new Date(b.due) - new Date()) / (1000 * 3600 * 24)) : Infinity;
-                return aDaysRemaining - bDaysRemaining;
-            });
-
-            tasks[category].forEach(task => {
-                const taskElement = document.createElement("div");
-                taskElement.classList.add("task");
-                if (task.completed) taskElement.classList.add("completed");
-                const dueDateFormatted = task.due ? formatDate(task.due) : "No due date";
-                const difficultyClass = task.difficulty.toLowerCase();
-                const priorityClass = task.priority.replace(" ", "-").toLowerCase();
-                taskElement.innerHTML = `
-                    <div class="task-name">
-                        ${task.name} <span onclick='editTask("${category}", "${task.name}")'>(${dueDateFormatted})</span>
-                    </div>
-                    <div class="difficulty-priority">
-                        <div class="difficulty ${difficultyClass}">${task.difficulty}</div>
-                        <div class="priority ${priorityClass}">${task.priority}</div>
-                    </div>
-                    <button class="complete-button" onclick='markTaskAsCompleted("${category}", "${task.name}")'>✓</button>`;
-                column.appendChild(taskElement);
+            task.get().then((doc) => {
+                if (doc.exists) {
+                    const taskData = doc.data();
+                    
+                    // Add to completed collection
+                    db.collection('completed').add({
+                        ...taskData,
+                        completed: true,
+                        completedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }).then(() => {
+                        // Delete from original category
+                        task.delete();
+                    });
+                }
             });
         }
-    }
 
-    function addTask() {
-        const taskName = document.getElementById("taskName").value;
-        const dueDate = document.getElementById("dueDate").value;
-        const difficulty = document.getElementById("difficulty").value;
-        const priority = document.getElementById("priority").value;
-        const category = document.getElementById("category").value;
-
-        if (!taskName) {
-            alert("Task name is required");
-            return;
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const today = new Date();
+            const timeDiff = date.getTime() - today.getTime();
+            const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+            const day = date.getDate();
+            const month = date.toLocaleString('default', { month: 'long' });
+            const year = date.getFullYear();
+            let dayWithSuffix = day;
+            if (day === 1 || day === 21 || day === 31) {
+                dayWithSuffix += 'st';
+            } else if (day === 2 || day === 22) {
+                dayWithSuffix += 'nd';
+            } else if (day === 3 || day === 23) {
+                dayWithSuffix += 'rd';
+            } else {
+                dayWithSuffix += 'th';
+            }
+            let formattedDate = `${dayWithSuffix} ${month} ${year}, ${daysRemaining} days remaining`;
+            if (daysRemaining < 5) {
+                formattedDate = `<span style="color: darkred;">${formattedDate}</span>`;
+            }
+            return formattedDate;
         }
 
-        const newTask = {
-            name: taskName,
-            due: dueDate || null,
-            difficulty: difficulty,
-            priority: priority,
-            completed: false
-        };
+        function updateDateTime() {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}s`;
 
-        tasks[category].push(newTask);
-        saveTasksToLocalStorage();
-        renderTasks();
+            const today = now.toLocaleDateString('default', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-        // Clear the form
-        document.getElementById("taskName").value = "";
-        document.getElementById("dueDate").value = "";
-        document.getElementById("difficulty").value = "easy";
-        document.getElementById("priority").value = "low";
-        document.getElementById("category").value = "jee";
-    }
+            const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 0, 0);
+            const timeRemaining = endOfDay - now;
+            const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
+            const minutesRemaining = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+            const secondsRemaining = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+            const timeRemainingString = `${hoursRemaining.toString().padStart(2, '0')}h ${minutesRemaining.toString().padStart(2, '0')}m ${secondsRemaining.toString().padStart(2, '0')}s`;
 
-    function editTask(category, taskName) {
-        currentCategory = category;
-        currentEditTask = tasks[category].find(task => task.name === taskName);
-        document.getElementById("editDueDate").value = currentEditTask.due || "";
-        document.getElementById("editDifficulty").value = currentEditTask.difficulty;
-        document.getElementById("editPriority").value = currentEditTask.priority;
-        document.getElementById("editPopup").style.display = "block";
-    }
+            document.getElementById('dateTimeDisplay').innerHTML = `${today} ${timeString}<br>Time remaining to 11 PM: ${timeRemainingString}`;
+        }
 
-    function saveEdit() {
-        currentEditTask.due = document.getElementById("editDueDate").value || null;
-        currentEditTask.difficulty = document.getElementById("editDifficulty").value;
-        currentEditTask.priority = document.getElementById("editPriority").value;
-        closePopup();
-        saveTasksToLocalStorage();
-        renderTasks();
-    }
-
-    function closePopup() {
-        document.getElementById("editPopup").style.display = "none";
-    }
-
-    function markTaskAsCompleted(category, taskName) {
-        const task = tasks[category].find(task => task.name === taskName);
-        task.completed = true;
-        tasks.completed.push(task);
-        tasks[category] = tasks[category].filter(task => task.name !== taskName);
-        saveTasksToLocalStorage();
-        renderTasks();
-    }
-
-    renderTasks();
-</script>
+        setInterval(updateDateTime, 1000);
+        
+        // Initialize listeners for each category
+        ['jee', 'python_misc', 'completed'].forEach(category => {
+            listenToCategory(category);
+        });
+    </script>
 </body>
 </html>
